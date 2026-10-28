@@ -103,8 +103,6 @@ h2{font-size:17px;margin:4px 0 12px;text-wrap:balance}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
 .urlbox{display:flex;gap:6px}
 .urlbox input{flex:1;min-width:0;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 10px;font-size:16px}
-.pill.new{background:var(--pencil);color:var(--paper);font-weight:700}
-.lastline{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .libbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .libbar select{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--card);color:var(--ink)}
 .ask{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--pencil-soft);font-size:13px}
@@ -187,10 +185,8 @@ details summary{cursor:pointer;font-size:13px;color:var(--pencil);font-weight:50
     <div class="libbar">
       <select id="libSort" aria-label="Sıralama">
         <option value="recent">Son okuduğun önce</option>
-        <option value="new">Yeni bölümü olan önce</option>
         <option value="az">A'dan Z'ye</option>
       </select>
-      <button class="btn ghost" id="checkBtn">Yeni bölümleri kontrol et</button>
     </div>
     <div id="libList"></div>
   </div>
@@ -251,56 +247,6 @@ const store = {
   get(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
   set(k, v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
-
-// ---------- latest chapters (chapter numbers only, from MangaDex) ----------
-const MD = 'https://api.mangadex.org';
-const SON_KEY = 'panel.sonbolum.v1';
-const SIX_H = 6 * 3600e3;
-let son = store.get(SON_KEY, {});
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-async function mdJson(path){
-  const r = await fetch(MD + path);
-  if (!r.ok) throw new Error('md');
-  return r.json();
-}
-// MangaDex entries carry their AniList id in links.al, so match on that instead of guessing by title
-async function findMdId(alId, names){
-  for (const n of [...new Set(names.filter(Boolean))].slice(0, 2)){
-    const j = await mdJson(`/manga?limit=10&title=${encodeURIComponent(n)}`);
-    const hit = j.data.find(d => d.attributes.links?.al === String(alId));
-    if (hit) return hit.id;
-  }
-  return null;
-}
-function maxChapter(agg){
-  let max = 0;
-  for (const v of Object.values(agg.volumes || {}))
-    for (const c of Object.values(v.chapters || {})) { const n = parseFloat(c.chapter); if (n > max) max = n; }
-  return max || null;
-}
-async function latest(alId, names, force){
-  const s = son[alId];
-  if (s && !force && Date.now() - s.t < SIX_H) return s;
-  const md = s?.md || await findMdId(alId, names);
-  let en = null, tr = null;
-  if (md){
-    en = maxChapter(await mdJson(`/manga/${md}/aggregate?translatedLanguage[]=en`));
-    tr = maxChapter(await mdJson(`/manga/${md}/aggregate?translatedLanguage[]=tr`));
-  }
-  son[alId] = {md, en, tr, t:Date.now()};
-  store.set(SON_KEY, son);
-  return son[alId];
-}
-const fmtCh = n => Number.isInteger(n) ? n : n.toFixed(1);
-function latestText(s){
-  if (!s || (!s.en && !s.tr)) return '';
-  return [s.tr && `TR ${fmtCh(s.tr)}`, s.en && `EN ${fmtCh(s.en)}`].filter(Boolean).join(' · ');
-}
-function newCount(i){
-  const s = son[i.id];
-  if (!s || i.state !== 'reading' || !i.chapter) return 0;
-  return Math.max(0, Math.floor(Math.max(s.en || 0, s.tr || 0) - i.chapter));
-}
 
 // ---------- "did you read it?" after opening a series ----------
 const PEND_KEY = 'panel.bekleyen';
@@ -437,7 +383,7 @@ function showTab(t){
   $('#view-lib').hidden = t !== 'lib';
   $('#tabFind').toggleAttribute('aria-current', t === 'find'); if (t === 'find') $('#tabFind').setAttribute('aria-current','page');
   $('#tabLib').toggleAttribute('aria-current', t === 'lib'); if (t === 'lib') $('#tabLib').setAttribute('aria-current','page');
-  if (t === 'lib'){ $('#askBar').hidden = true; renderLib(); checkAll(false); }
+  if (t === 'lib'){ $('#askBar').hidden = true; renderLib(); }
   else $('#grid').querySelectorAll('.card[data-id]').forEach(c => {
     const has = !!lib[c.dataset.id], dot = c.querySelector('.mine');
     if (has && !dot) c.querySelector('.cover').insertAdjacentHTML('beforeend','<i class="mine" title="Kitaplığında"></i>');
@@ -449,36 +395,14 @@ $('#tabLib').addEventListener('click', () => { showTab('lib'); window.scrollTo(0
 
 // ---------- library ----------
 let libFilter = 'all';
-let libSort = store.get('panel.sirala', 'recent');
-$('#libSort').value = libSort;
-$('#libSort').addEventListener('change', e => { libSort = e.target.value; store.set('panel.sirala', libSort); renderLib(); });
 const SORTS = {
   recent: (a,b) => (b.updated||0) - (a.updated||0),
-  new: (a,b) => newCount(b) - newCount(a) || (b.updated||0) - (a.updated||0),
   az: (a,b) => a.title.localeCompare(b.title, 'tr'),
 };
-
-let checking = false;
-async function checkAll(force){
-  if (checking) return;
-  const items = Object.values(lib).filter(i => i.state !== 'done' && (force || !son[i.id] || Date.now() - son[i.id].t >= SIX_H));
-  if (!items.length){ if (force) toast('Kontrol edilecek seri yok'); return; }
-  checking = true;
-  $('#checkBtn').disabled = true;
-  let fail = 0, done = 0;
-  for (const i of items){
-    $('#checkBtn').textContent = `Kontrol ediliyor… ${++done}/${items.length}`;
-    try { await latest(i.id, i.names || [i.title], force); } catch { fail++; }
-    await sleep(300);
-  }
-  checking = false;
-  $('#checkBtn').disabled = false;
-  $('#checkBtn').textContent = 'Yeni bölümleri kontrol et';
-  // don't wipe a link the user is typing
-  if (!$('#view-lib').hidden && !document.querySelector('[data-urlform]:not([hidden])')) renderLib();
-  if (force) toast(fail ? `${fail} seri kontrol edilemedi, internetini kontrol et` : 'Bölüm bilgileri güncellendi');
-}
-$('#checkBtn').addEventListener('click', () => checkAll(true));
+let libSort = store.get('panel.sirala', 'recent');
+if (!SORTS[libSort]) libSort = 'recent';
+$('#libSort').value = libSort;
+$('#libSort').addEventListener('change', e => { libSort = e.target.value; store.set('panel.sirala', libSort); renderLib(); });
 
 function renderLib(){
   const items = Object.values(lib).sort(SORTS[libSort] || SORTS.recent);
@@ -491,7 +415,6 @@ function renderLib(){
   }
   if (!shown.length){ $('#libList').innerHTML = `<div class="empty">Bu listede seri yok.</div>`; return; }
   $('#libList').innerHTML = shown.map(i => {
-    const nc = newCount(i), lt = latestText(son[i.id]);
     return `
     <div class="lib-row" data-id="${i.id}">
       <button class="cover" data-open style="border:0;padding:0"><img loading="lazy" src="${esc(i.cover)}" alt=""></button>
@@ -499,10 +422,8 @@ function renderLib(){
         <button class="name" data-open>${esc(i.title)}</button>
         <div class="row">
           <span class="pill ${i.state}">${LIB_LABEL[i.state]}</span>
-          ${nc ? `<span class="pill new">${nc} yeni bölüm</span>` : ''}
           <span class="step"><button data-ch="-1" aria-label="Bölüm azalt">−</button><span>Bölüm ${i.chapter||0}${i.chapters?` / ${i.chapters}`:''}</span><button data-ch="1" aria-label="Bölüm artır">+</button></span>
         </div>
-        ${lt ? `<div class="lastline">Son çıkan bölüm: ${lt}</div>` : ''}
         ${pending?.id === i.id ? `<div class="ask"><span>Bir sonraki bölümü (${(i.chapter||0)+1}) okudun mu?</span><button class="btn" data-yes>Evet, +1</button><button class="btn ghost" data-no>Hayır</button></div>` : ''}
         <div class="row">
           ${i.url ? `<a class="btn" data-resume href="${esc(i.url)}" target="_blank" rel="noopener">Kaldığım yerden oku</a>` : ''}
@@ -613,7 +534,6 @@ function renderDetail(m){
     ['Tür', kindOf(m)],
     ['Durum', STATUS[m.status] || '—'],
     ['Bölüm', m.chapters ? `${m.chapters}${m.volumes ? ` · ${m.volumes} cilt` : ''}` : (m.status === 'RELEASING' ? 'Hâlâ çıkıyor' : '—')],
-    ['Son çıkan', m.status === 'FINISHED' && m.chapters ? `${m.chapters} (bitti)` : '…'],
     ['Yıl', m.startDate?.year || '—'],
     ['Puan', m.averageScore ? `${(m.averageScore/10).toFixed(1)} / 10` : '—'],
   ];
@@ -624,7 +544,7 @@ function renderDetail(m){
       <div>
         <h1 id="sheetTitle">${esc(name)}</h1>
         ${alts.length ? `<p class="alt">${esc(alts.join(' · '))}</p>` : ''}
-        <dl class="facts">${facts.map(([k,v]) => `<dt>${k}</dt><dd${k === 'Son çıkan' ? ' id="lastCh"' : ''}>${esc(v)}</dd>`).join('')}</dl>
+        <dl class="facts">${facts.map(([k,v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
       </div>
     </div>
     <div class="seg" id="seg">${LIB_STATES.map(([k,l]) => `<button data-s="${k}" aria-pressed="${st===k}">${l}</button>`).join('')}</div>
@@ -638,11 +558,6 @@ function renderDetail(m){
     setState(m, next);
     $('#seg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.s === next));
   });
-  if ($('#lastCh').textContent === '…'){
-    latest(m.id, [m.title.english, m.title.romaji])
-      .then(s => { if (current === m) $('#lastCh').textContent = latestText(s) || 'bilinmiyor'; })
-      .catch(() => { if (current === m) $('#lastCh').textContent = 'bilinmiyor'; });
-  }
   const more = $('#moreBtn');
   if (more) more.addEventListener('click', () => { const d = $('#desc'); d.classList.toggle('clamp'); more.textContent = d.classList.contains('clamp') ? 'Devamını göster' : 'Kısalt'; });
 }
