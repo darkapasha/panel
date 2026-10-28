@@ -342,7 +342,22 @@ async function loadList(term){
   try {
     const d = await gql(LIST_Q, term ? {s:term, sort:['SEARCH_MATCH']} : {sort:['TRENDING_DESC']});
     if (my !== reqId) return;
-    const list = d.Page.media;
+    let list = d.Page.media;
+    // one misspelled word makes AniList return nothing, so retry without one word at a time (longest first)
+    if (!list.length && term.includes(' ')){
+      const words = term.split(/\s+/);
+      const tries = [...words.keys()].filter(i => words[i].length >= 4).sort((a,b) => words[b].length - words[a].length).slice(0, 3);
+      for (const i of tries){
+        const s = words.filter((_, j) => j !== i).join(' ');
+        const r = await gql(LIST_Q, {s, sort:['SEARCH_MATCH']});
+        if (my !== reqId) return;
+        if (r.Page.media.length){
+          list = r.Page.media;
+          $('#findMsg').innerHTML = `<div class="notice">“${esc(term)}” için tam eşleşme yok, yazım hatası olabilir. “${esc(words[i])}” kelimesi olmadan bulduklarım:</div>`;
+          break;
+        }
+      }
+    }
     list.forEach(m => cache.set(m.id, m));
     if (!list.length){
       $('#grid').innerHTML = '';
