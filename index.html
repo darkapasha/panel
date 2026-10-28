@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Panel">
+<meta name="theme-color" content="#111316">
+<link rel="apple-touch-icon" id="touchIcon" href="icon.png">
+<link rel="icon" id="favIcon" href="icon.png">
+<title>Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Layout: sticky ink header with search, one scrolling content column, fixed bottom tab bar; details slide over as a full sheet. */
+:root{
+  --paper:#F4F2ED; --card:#FFFFFF; --ink:#16181C; --muted:#5E6570; --line:#DAD6CD;
+  --pencil:#1A78A8; --pencil-soft:#DCEEF8; --tone:rgba(22,24,28,.13);
+  --ok:#2C7A4B; --warn:#A8620A; --head:#16181C; --head-ink:#F4F2ED;
+  --f-logo:"Dela Gothic One","Arial Black",system-ui,sans-serif;
+  --f-body:"Rubik",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+  --gut-l:max(16px,env(safe-area-inset-left,0px)); --gut-r:max(16px,env(safe-area-inset-right,0px));
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#111316; --card:#1A1D22; --ink:#ECE9E2; --muted:#9BA2AB; --line:#2B2F36;
+  --pencil:#6CC6F0; --pencil-soft:#15303E; --tone:rgba(236,233,226,.09);
+  --ok:#6FCF97; --warn:#F2B35A; --head:#0B0C0E; --head-ink:#ECE9E2; color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-text-size-adjust:100%;padding-bottom:calc(64px + var(--safe-b))}
+img{max-width:100%;display:block}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--pencil);outline-offset:2px}
+[hidden]{display:none!important}
+a{color:inherit}
+
+/* header */
+.top{position:sticky;top:0;z-index:20;background:var(--head);color:var(--head-ink);
+  padding:calc(10px + var(--safe-t)) var(--gut-r) 12px var(--gut-l);
+  background-image:radial-gradient(rgba(255,255,255,.10) 1px,transparent 1.4px);background-size:7px 7px}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
+.logo{font-family:var(--f-logo);font-size:26px;letter-spacing:.04em;line-height:1}
+.logo span{color:var(--pencil)}
+.tag{font-size:12px;opacity:.7}
+.search{display:flex;gap:8px;align-items:center;background:var(--card);color:var(--ink);border-radius:12px;padding:0 6px 0 12px;border:1px solid var(--line)}
+.search svg{flex:none;opacity:.6}
+.search input{flex:1;min-width:0;border:0;background:transparent;padding:12px 0;font-size:16px;outline:none}
+.search button{border:0;background:transparent;padding:8px;border-radius:8px;color:var(--muted)}
+
+main{padding:16px var(--gut-r) 24px var(--gut-l);max-width:980px;margin:0 auto}
+h2{font-size:17px;margin:4px 0 12px;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px;margin:-8px 0 14px}
+
+/* result grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:16px 12px}
+.card{border:0;background:none;padding:0;text-align:left;display:flex;flex-direction:column;gap:6px;min-width:0}
+.cover{position:relative;aspect-ratio:2/3;width:100%;border-radius:8px;overflow:hidden;background:var(--tone)}
+.cover img{width:100%;height:100%;object-fit:cover}
+.cover .kind{position:absolute;left:6px;top:6px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:rgba(11,12,14,.78);color:#F4F2ED}
+.cover .mine{position:absolute;right:6px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--pencil);box-shadow:0 0 0 2px rgba(11,12,14,.6)}
+.card .t{font-size:13px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .m{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.skel .cover{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+
+.notice{padding:14px;border-radius:12px;background:var(--pencil-soft);font-size:14px;margin-bottom:16px}
+.web{margin-top:22px;padding-top:16px;border-top:1px dashed var(--line)}
+.web p{margin:0 0 10px;font-size:13px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-size:13px;font-weight:500;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.chip small{font-weight:400;color:var(--muted);font-size:11px}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* tab bar */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:var(--card);border-top:1px solid var(--line);
+  padding:0 var(--gut-r) var(--safe-b) var(--gut-l)}
+.tabs button{flex:1;border:0;background:none;padding:9px 0 10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted)}
+.tabs button[aria-current="page"]{color:var(--pencil);font-weight:500}
+.tabs .count{font-variant-numeric:tabular-nums}
+
+/* library */
+.lib-row{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.lib-row:last-child{border-bottom:0}
+.lib-row .cover{border-radius:6px}
+.lib-row .info{min-width:0;display:flex;flex-direction:column;gap:8px}
+.lib-row .name{border:0;background:none;padding:0;text-align:left;font-weight:500;font-size:15px;line-height:1.3}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pill{font-size:11px;font-weight:500;padding:3px 8px;border-radius:999px;background:var(--tone)}
+.pill.reading{background:var(--pencil-soft);color:var(--pencil)}
+.pill.done{color:var(--ok)}
+.step{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.step button{border:0;background:none;width:34px;height:32px;font-size:18px;line-height:1}
+.step span{min-width:76px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:500;text-decoration:none;background:var(--pencil);color:#fff}
+@media (prefers-color-scheme:dark){.btn{color:#0B0C0E}}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.urlbox{display:flex;gap:6px}
+.urlbox input{flex:1;min-width:0;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 10px;font-size:16px}
+.pill.new{background:var(--pencil);color:var(--paper);font-weight:700}
+.lastline{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.libbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.libbar select{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--card);color:var(--ink)}
+.ask{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--pencil-soft);font-size:13px}
+.ask span{flex:1 1 100%}
+.askbar{position:fixed;left:0;right:0;bottom:calc(58px + var(--safe-b));z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.18);padding:12px var(--gut-r) 12px var(--gut-l)}
+.askbar span{flex:1 1 100%;min-width:0;font-size:14px}
+.empty{text-align:center;padding:40px 12px;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:6px}
+
+/* detail sheet */
+.sheet{position:fixed;inset:0;z-index:40;background:var(--paper);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  transform:translateY(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.sheet.open{transform:none}
+.sheet-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;background:var(--paper);border-bottom:1px solid var(--line);
+  padding:calc(8px + var(--safe-t)) var(--gut-r) 8px var(--gut-l)}
+.sheet-bar button{border:0;background:none;padding:8px 6px;font-weight:500;color:var(--pencil);display:flex;align-items:center;gap:4px}
+.sheet-bar .bt{flex:1;min-width:0;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet-body{padding:16px var(--gut-r) calc(32px + var(--safe-b)) var(--gut-l);max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.hero{display:grid;grid-template-columns:118px 1fr;gap:16px;align-items:start}
+.hero .cover{border-radius:10px}
+.hero h1{font-size:21px;line-height:1.2;margin:0 0 4px;text-wrap:balance}
+.hero .alt{color:var(--muted);font-size:13px;margin:0 0 10px;word-break:break-word}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px;margin:0}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;font-variant-numeric:tabular-nums}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.seg button{border:0;background:none;padding:10px 4px;font-size:13px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:500}
+section h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px;font-weight:500}
+.desc{white-space:pre-line;margin:0;font-size:14px;color:var(--ink)}
+.desc.clamp{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.more{border:0;background:none;padding:6px 0;color:var(--pencil);font-size:13px;font-weight:500}
+.links{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.links a{display:flex;align-items:center;gap:10px;padding:12px 14px;text-decoration:none;border-bottom:1px solid var(--line)}
+.links a:last-child{border-bottom:0}
+.links .ln{flex:1;min-width:0;font-weight:500}
+.links .ln small{display:block;font-weight:400;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.links .lang{font-size:11px;padding:2px 7px;border-radius:6px;background:var(--tone);white-space:nowrap}
+.links .arr{color:var(--muted)}
+.none{font-size:13px;color:var(--muted);margin:0}
+details summary{cursor:pointer;font-size:13px;color:var(--pencil);font-weight:500;margin-bottom:8px}
+.genres{display:flex;flex-wrap:wrap;gap:6px}
+.genres span{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:calc(76px + var(--safe-b));transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--paper);padding:9px 14px;border-radius:10px;font-size:13px;max-width:calc(100% - 32px)}
+@media (min-width:640px){.grid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))}.hero{grid-template-columns:160px 1fr}}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}.skel .cover{animation:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo">PAN<span>E</span>L</div>
+    <div class="tag">manga · manhwa · webtoon</div>
+  </div>
+  <form class="search" id="searchForm" role="search">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Seri adı yaz: Solo Leveling, Berserk…" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Seri ara">
+    <button type="button" id="clearBtn" aria-label="Aramayı temizle" hidden>✕</button>
+  </form>
+</header>
+
+<main>
+  <div id="view-find">
+    <h2 id="findTitle">Şu an popüler</h2>
+    <p class="sub" id="findSub">Bu hafta en çok okunanlar. Yukarıdan istediğin seriyi ara.</p>
+    <div id="findMsg"></div>
+    <div class="grid" id="grid"></div>
+    <div class="web" id="webBox" hidden>
+      <p>Aradığın burada yok mu, ya da başka sitede mi okumak istiyorsun? Web'de ara:</p>
+      <div class="chips" id="webChips"></div>
+    </div>
+  </div>
+
+  <div id="view-lib" hidden>
+    <h2>Kitaplığım</h2>
+    <div class="chips" id="libFilter" style="margin-bottom:12px"></div>
+    <div class="libbar">
+      <select id="libSort" aria-label="Sıralama">
+        <option value="recent">Son okuduğun önce</option>
+        <option value="new">Yeni bölümü olan önce</option>
+        <option value="az">A'dan Z'ye</option>
+      </select>
+      <button class="btn ghost" id="checkBtn">Yeni bölümleri kontrol et</button>
+    </div>
+    <div id="libList"></div>
+  </div>
+</main>
+
+<nav class="tabs" aria-label="Bölümler">
+  <button id="tabFind" aria-current="page">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    Keşfet
+  </button>
+  <button id="tabLib">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 2.5 15.5-3.5 1z"/></svg>
+    <span>Kitaplığım <span class="count" id="libCount"></span></span>
+  </button>
+</nav>
+
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="sheet-bar">
+    <button id="backBtn" aria-label="Geri">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>Geri
+    </button>
+    <div class="bt" id="sheetBarTitle"></div>
+  </div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<div class="askbar" id="askBar" hidden>
+  <span id="askText"></span>
+  <button class="btn" id="askYes">Evet, +1</button>
+  <button class="btn ghost" id="askNo">Hayır</button>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const API = 'https://graphql.anilist.co';
+const FIELDS = `id title{romaji english native} synonyms coverImage{large extraLarge} format countryOfOrigin status chapters volumes averageScore startDate{year} genres description(asHtml:false) externalLinks{url site type language} siteUrl`;
+const LIST_Q = `query($s:String,$sort:[MediaSort]){Page(perPage:30){media(search:$s,type:MANGA,isAdult:false,format_not:NOVEL,sort:$sort){${FIELDS}}}}`;
+const ONE_Q = `query($id:Int){Media(id:$id,type:MANGA){${FIELDS}}}`;
+const LIB_KEY = 'panel.kitaplik.v1';
+
+const KIND = {JP:'Manga', KR:'Manhwa', CN:'Manhua', TW:'Manhua'};
+const STATUS = {FINISHED:'Tamamlandı', RELEASING:'Devam ediyor', NOT_YET_RELEASED:'Yakında', CANCELLED:'İptal edildi', HIATUS:'Ara verdi'};
+const GENRE = {Action:'Aksiyon', Adventure:'Macera', Comedy:'Komedi', Drama:'Dram', Fantasy:'Fantastik', Horror:'Korku', Music:'Müzik', Mystery:'Gizem', Psychological:'Psikolojik', Romance:'Romantik', 'Sci-Fi':'Bilim kurgu', 'Slice of Life':'Günlük yaşam', Sports:'Spor', Supernatural:'Doğaüstü', Thriller:'Gerilim', Ecchi:'Ecchi', Mecha:'Mecha', 'Mahou Shoujo':'Büyücü kız'};
+const LIB_STATES = [['reading','Okuyorum'],['plan','Okuyacağım'],['done','Bitirdim']];
+const LIB_LABEL = Object.fromEntries(LIB_STATES);
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cache = new Map();
+
+// ---------- storage ----------
+let lib = {};
+try { lib = JSON.parse(localStorage.getItem(LIB_KEY)) || {}; } catch { lib = {}; }
+function saveLib(){ try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch {} updateCount(); }
+function updateCount(){ const n = Object.keys(lib).length; $('#libCount').textContent = n ? `(${n})` : ''; }
+const store = {
+  get(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------- latest chapters (chapter numbers only, from MangaDex) ----------
+const MD = 'https://api.mangadex.org';
+const SON_KEY = 'panel.sonbolum.v1';
+const SIX_H = 6 * 3600e3;
+let son = store.get(SON_KEY, {});
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function mdJson(path){
+  const r = await fetch(MD + path);
+  if (!r.ok) throw new Error('md');
+  return r.json();
+}
+// MangaDex entries carry their AniList id in links.al, so match on that instead of guessing by title
+async function findMdId(alId, names){
+  for (const n of [...new Set(names.filter(Boolean))].slice(0, 2)){
+    const j = await mdJson(`/manga?limit=10&title=${encodeURIComponent(n)}`);
+    const hit = j.data.find(d => d.attributes.links?.al === String(alId));
+    if (hit) return hit.id;
+  }
+  return null;
+}
+function maxChapter(agg){
+  let max = 0;
+  for (const v of Object.values(agg.volumes || {}))
+    for (const c of Object.values(v.chapters || {})) { const n = parseFloat(c.chapter); if (n > max) max = n; }
+  return max || null;
+}
+async function latest(alId, names, force){
+  const s = son[alId];
+  if (s && !force && Date.now() - s.t < SIX_H) return s;
+  const md = s?.md || await findMdId(alId, names);
+  let en = null, tr = null;
+  if (md){
+    en = maxChapter(await mdJson(`/manga/${md}/aggregate?translatedLanguage[]=en`));
+    tr = maxChapter(await mdJson(`/manga/${md}/aggregate?translatedLanguage[]=tr`));
+  }
+  son[alId] = {md, en, tr, t:Date.now()};
+  store.set(SON_KEY, son);
+  return son[alId];
+}
+const fmtCh = n => Number.isInteger(n) ? n : n.toFixed(1);
+function latestText(s){
+  if (!s || (!s.en && !s.tr)) return '';
+  return [s.tr && `TR ${fmtCh(s.tr)}`, s.en && `EN ${fmtCh(s.en)}`].filter(Boolean).join(' · ');
+}
+function newCount(i){
+  const s = son[i.id];
+  if (!s || i.state !== 'reading' || !i.chapter) return 0;
+  return Math.max(0, Math.floor(Math.max(s.en || 0, s.tr || 0) - i.chapter));
+}
+
+// ---------- "did you read it?" after opening a series ----------
+const PEND_KEY = 'panel.bekleyen';
+let pending = store.get(PEND_KEY, null);
+function setPending(id){ pending = {id, at:Date.now()}; store.set(PEND_KEY, pending); }
+function clearPending(){ pending = null; store.set(PEND_KEY, null); $('#askBar').hidden = true; }
+function answerPending(yes){
+  const it = pending && lib[pending.id];
+  if (yes && it){ it.chapter = (it.chapter || 0) + 1; it.updated = Date.now(); saveLib(); toast(`${it.title}: bölüm ${it.chapter} kaydedildi`); }
+  clearPending();
+  if (!$('#view-lib').hidden) renderLib();
+}
+function maybeAsk(){
+  if (!pending || !lib[pending.id] || Date.now() - pending.at < 15000) return;
+  // the library shows the same question inside the series row
+  if (!$('#view-lib').hidden && $('#sheet').hidden) return renderLib();
+  const it = lib[pending.id];
+  $('#askText').textContent = `${it.title}: bir sonraki bölümü (${(it.chapter || 0) + 1}) okudun mu?`;
+  $('#askBar').hidden = false;
+}
+$('#askYes').addEventListener('click', () => answerPending(true));
+$('#askNo').addEventListener('click', () => answerPending(false));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) maybeAsk(); });
+window.addEventListener('focus', maybeAsk);
+window.addEventListener('pageshow', maybeAsk);
+
+// ---------- api ----------
+async function gql(query, variables){
+  let r;
+  try {
+    r = await fetch(API, {method:'POST', headers:{'Content-Type':'application/json', Accept:'application/json'}, body:JSON.stringify({query, variables})});
+  } catch { throw new Error('net'); }
+  if (r.status === 429) throw new Error('rate');
+  const j = await r.json().catch(() => ({}));
+  if (!j.data) throw new Error('api');
+  return j.data;
+}
+function errText(e){
+  if (e.message === 'rate') return 'Çok hızlı arama yapıldı. Birkaç saniye bekleyip tekrar dene.';
+  if (e.message === 'net') return 'İnternete bağlanılamadı. Kitaplığın yine de açık.';
+  return 'Veri gelmedi, birazdan tekrar dene.';
+}
+
+// ---------- helpers ----------
+const mainTitle = m => m.title.english || m.title.romaji || m.title.native;
+const kindOf = m => m.format === 'ONE_SHOT' ? 'Tek bölüm' : (KIND[m.countryOfOrigin] || 'Çizgi roman');
+function cleanDesc(d){
+  if (!d) return '';
+  const html = d.replace(/<br\s*\/?>/gi, '\n');
+  const txt = new DOMParser().parseFromString(html, 'text/html').body.textContent || '';
+  return txt.replace(/\n{3,}/g, '\n\n').trim();
+}
+function snapshot(m){ return {id:m.id, title:mainTitle(m), names:[m.title.english, m.title.romaji], cover:m.coverImage.large, kind:kindOf(m), chapters:m.chapters}; }
+function toast(t){ const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200); }
+
+function g(q){ return 'https://www.google.com/search?q=' + encodeURIComponent(q); }
+function webLinks(name){
+  const q = encodeURIComponent(name);
+  return {
+    tr: [
+      {site:'Google', note:'Türkçe oku', url:g(`${name} türkçe oku`)},
+      {site:'Google', note:'Türkçe manga / webtoon', url:g(`${name} türkçe bölüm`)},
+      {site:'MangaDex', note:'Türkçe çeviriler de var', url:`https://mangadex.org/search?q=${q}`},
+    ],
+    en: [
+      {site:'Webtoon', note:'Resmi, çoğu ücretsiz', url:`https://www.webtoons.com/en/search?keyword=${q}`},
+      {site:'MANGA Plus', note:'Resmi, Shueisha', url:g(`${name} site:mangaplus.shueisha.co.jp`)},
+      {site:'Tapas', note:'Resmi webtoon sitesi', url:`https://tapas.io/search?q=${q}`},
+      {site:'MangaDex', note:'İngilizce çeviriler', url:`https://mangadex.org/search?q=${q}`},
+      {site:'Google', note:'English, read online', url:g(`${name} read online`)},
+    ],
+  };
+}
+
+// ---------- discover ----------
+let reqId = 0;
+function skeleton(){ $('#grid').innerHTML = Array.from({length:9}, () => `<div class="card skel"><div class="cover"></div></div>`).join(''); }
+function cardHTML(m){
+  const meta = [kindOf(m), m.startDate?.year, m.averageScore ? `★ ${(m.averageScore/10).toFixed(1)}` : ''].filter(Boolean).join(' · ');
+  return `<button class="card" data-id="${m.id}">
+    <div class="cover"><img loading="lazy" src="${esc(m.coverImage.large)}" alt="">${lib[m.id] ? '<i class="mine" title="Kitaplığında"></i>' : ''}</div>
+    <div class="t">${esc(mainTitle(m))}</div><div class="m">${esc(meta)}</div></button>`;
+}
+async function loadList(term){
+  const my = ++reqId;
+  term = term.trim();
+  $('#findMsg').innerHTML = '';
+  $('#findTitle').textContent = term ? `“${term}” için sonuçlar` : 'Şu an popüler';
+  $('#findSub').textContent = term ? 'Seriye dokun, nerede okuyabileceğini göster.' : 'Bu hafta en çok okunanlar. Yukarıdan istediğin seriyi ara.';
+  $('#findSub').hidden = false;
+  renderWeb(term);
+  skeleton();
+  try {
+    const d = await gql(LIST_Q, term ? {s:term, sort:['SEARCH_MATCH']} : {sort:['TRENDING_DESC']});
+    if (my !== reqId) return;
+    const list = d.Page.media;
+    list.forEach(m => cache.set(m.id, m));
+    if (!list.length){
+      $('#grid').innerHTML = '';
+      $('#findMsg').innerHTML = `<div class="notice">Bu isimle manga/manhwa kaydı bulamadım. Batı çizgi romanı ya da az bilinen bir seriyse aşağıdaki web aramalarını dene.</div>`;
+      return;
+    }
+    $('#grid').innerHTML = list.map(cardHTML).join('');
+  } catch(e){
+    if (my !== reqId) return;
+    $('#grid').innerHTML = '';
+    $('#findMsg').innerHTML = `<div class="notice">${esc(errText(e))}</div>`;
+  }
+}
+function renderWeb(term){
+  $('#webBox').hidden = !term;
+  if (!term) return;
+  const w = webLinks(term);
+  $('#webChips').innerHTML = [...w.tr.slice(0,1).map(l => ({...l, lab:'Türkçe'})), {site:'Google', url:g(`${term} çizgi roman türkçe`), lab:'Çizgi roman'}, ...w.en.filter(l => l.site !== 'MANGA Plus').map(l => ({...l, lab:'EN'}))]
+    .map(l => `<a class="chip" href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.site)} <small>${esc(l.lab)}</small></a>`).join('');
+}
+
+let debounce;
+$('#q').addEventListener('input', e => {
+  $('#clearBtn').hidden = !e.target.value;
+  clearTimeout(debounce);
+  const v = e.target.value.trim();
+  if (v.length === 1) return;
+  debounce = setTimeout(() => loadList(v), 550);
+});
+$('#searchForm').addEventListener('submit', e => { e.preventDefault(); clearTimeout(debounce); $('#q').blur(); showTab('find'); loadList($('#q').value); });
+$('#clearBtn').addEventListener('click', () => { $('#q').value = ''; $('#clearBtn').hidden = true; loadList(''); $('#q').focus(); });
+$('#grid').addEventListener('click', e => { const c = e.target.closest('.card[data-id]'); if (c) openDetail(+c.dataset.id); });
+$('#q').addEventListener('focus', () => showTab('find'));
+
+// ---------- tabs ----------
+function showTab(t){
+  $('#view-find').hidden = t !== 'find';
+  $('#view-lib').hidden = t !== 'lib';
+  $('#tabFind').toggleAttribute('aria-current', t === 'find'); if (t === 'find') $('#tabFind').setAttribute('aria-current','page');
+  $('#tabLib').toggleAttribute('aria-current', t === 'lib'); if (t === 'lib') $('#tabLib').setAttribute('aria-current','page');
+  if (t === 'lib'){ $('#askBar').hidden = true; renderLib(); checkAll(false); }
+  else $('#grid').querySelectorAll('.card[data-id]').forEach(c => {
+    const has = !!lib[c.dataset.id], dot = c.querySelector('.mine');
+    if (has && !dot) c.querySelector('.cover').insertAdjacentHTML('beforeend','<i class="mine" title="Kitaplığında"></i>');
+    if (!has && dot) dot.remove();
+  });
+}
+$('#tabFind').addEventListener('click', () => { showTab('find'); window.scrollTo(0,0); });
+$('#tabLib').addEventListener('click', () => { showTab('lib'); window.scrollTo(0,0); });
+
+// ---------- library ----------
+let libFilter = 'all';
+let libSort = store.get('panel.sirala', 'recent');
+$('#libSort').value = libSort;
+$('#libSort').addEventListener('change', e => { libSort = e.target.value; store.set('panel.sirala', libSort); renderLib(); });
+const SORTS = {
+  recent: (a,b) => (b.updated||0) - (a.updated||0),
+  new: (a,b) => newCount(b) - newCount(a) || (b.updated||0) - (a.updated||0),
+  az: (a,b) => a.title.localeCompare(b.title, 'tr'),
+};
+
+let checking = false;
+async function checkAll(force){
+  if (checking) return;
+  const items = Object.values(lib).filter(i => i.state !== 'done' && (force || !son[i.id] || Date.now() - son[i.id].t >= SIX_H));
+  if (!items.length){ if (force) toast('Kontrol edilecek seri yok'); return; }
+  checking = true;
+  $('#checkBtn').disabled = true;
+  let fail = 0, done = 0;
+  for (const i of items){
+    $('#checkBtn').textContent = `Kontrol ediliyor… ${++done}/${items.length}`;
+    try { await latest(i.id, i.names || [i.title], force); } catch { fail++; }
+    await sleep(300);
+  }
+  checking = false;
+  $('#checkBtn').disabled = false;
+  $('#checkBtn').textContent = 'Yeni bölümleri kontrol et';
+  // don't wipe a link the user is typing
+  if (!$('#view-lib').hidden && !document.querySelector('[data-urlform]:not([hidden])')) renderLib();
+  if (force) toast(fail ? `${fail} seri kontrol edilemedi, internetini kontrol et` : 'Bölüm bilgileri güncellendi');
+}
+$('#checkBtn').addEventListener('click', () => checkAll(true));
+
+function renderLib(){
+  const items = Object.values(lib).sort(SORTS[libSort] || SORTS.recent);
+  const counts = {all:items.length}; LIB_STATES.forEach(([k]) => counts[k] = items.filter(i => i.state === k).length);
+  $('#libFilter').innerHTML = [['all','Hepsi'], ...LIB_STATES].map(([k,l]) => `<button class="chip${libFilter===k?' on':''}" data-f="${k}">${l} <small>${counts[k]}</small></button>`).join('');
+  const shown = items.filter(i => libFilter === 'all' || i.state === libFilter);
+  if (!items.length){
+    $('#libList').innerHTML = `<div class="empty"><b>Kitaplığın boş</b>Bir seriyi açıp “Okuyorum” ya da “Okuyacağım” de, burada kaldığın bölümle birlikte durur.</div>`;
+    return;
+  }
+  if (!shown.length){ $('#libList').innerHTML = `<div class="empty">Bu listede seri yok.</div>`; return; }
+  $('#libList').innerHTML = shown.map(i => {
+    const nc = newCount(i), lt = latestText(son[i.id]);
+    return `
+    <div class="lib-row" data-id="${i.id}">
+      <button class="cover" data-open style="border:0;padding:0"><img loading="lazy" src="${esc(i.cover)}" alt=""></button>
+      <div class="info">
+        <button class="name" data-open>${esc(i.title)}</button>
+        <div class="row">
+          <span class="pill ${i.state}">${LIB_LABEL[i.state]}</span>
+          ${nc ? `<span class="pill new">${nc} yeni bölüm</span>` : ''}
+          <span class="step"><button data-ch="-1" aria-label="Bölüm azalt">−</button><span>Bölüm ${i.chapter||0}${i.chapters?` / ${i.chapters}`:''}</span><button data-ch="1" aria-label="Bölüm artır">+</button></span>
+        </div>
+        ${lt ? `<div class="lastline">Son çıkan bölüm: ${lt}</div>` : ''}
+        ${pending?.id === i.id ? `<div class="ask"><span>Bir sonraki bölümü (${(i.chapter||0)+1}) okudun mu?</span><button class="btn" data-yes>Evet, +1</button><button class="btn ghost" data-no>Hayır</button></div>` : ''}
+        <div class="row">
+          ${i.url ? `<a class="btn" data-resume href="${esc(i.url)}" target="_blank" rel="noopener">Kaldığım yerden oku</a>` : ''}
+          <button class="btn ghost" data-editurl>${i.url ? 'Linki değiştir' : 'Okuduğum siteyi kaydet'}</button>
+        </div>
+        <form class="urlbox" data-urlform novalidate hidden>
+          <input type="url" inputmode="url" placeholder="Okuduğun sayfanın linkini yapıştır" value="${esc(i.url||'')}" aria-label="Okuduğun sayfanın linki">
+          <button class="btn" type="submit">Kaydet</button>
+        </form>
+      </div>
+    </div>`;
+  }).join('');
+}
+$('#libFilter').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (b){ libFilter = b.dataset.f; renderLib(); } });
+$('#libList').addEventListener('click', e => {
+  const row = e.target.closest('.lib-row'); if (!row) return;
+  const it = lib[row.dataset.id];
+  if (e.target.closest('[data-open]')) return openDetail(+row.dataset.id);
+  if (e.target.closest('[data-resume]')) return setPending(it.id);
+  if (e.target.closest('[data-yes]')) return answerPending(true);
+  if (e.target.closest('[data-no]')) return answerPending(false);
+  const ch = e.target.closest('[data-ch]');
+  if (ch){ it.chapter = Math.max(0, (it.chapter||0) + +ch.dataset.ch); it.updated = Date.now(); saveLib(); renderLib(); return; }
+  if (e.target.closest('[data-editurl]')){ const f = row.querySelector('[data-urlform]'); f.hidden = !f.hidden; if (!f.hidden) f.querySelector('input').focus(); }
+});
+$('#libList').addEventListener('submit', e => {
+  e.preventDefault();
+  const row = e.target.closest('.lib-row'), it = lib[row.dataset.id];
+  let v = e.target.querySelector('input').value.trim();
+  if (v && !/^https?:\/\//i.test(v)) v = 'https://' + v;
+  it.url = v; it.updated = Date.now(); saveLib(); renderLib(); toast(v ? 'Link kaydedildi' : 'Link silindi');
+});
+
+function setState(m, state){
+  if (!state){ delete lib[m.id]; saveLib(); toast('Kitaplıktan çıkarıldı'); return; }
+  const prev = lib[m.id] || {chapter:0};
+  lib[m.id] = {...prev, ...snapshot(m), state, updated:Date.now()};
+  saveLib(); toast(`${LIB_LABEL[state]} listesine eklendi`);
+}
+
+// ---------- detail ----------
+let current = null;
+async function openDetail(id){
+  const sheet = $('#sheet');
+  sheet.hidden = false;
+  requestAnimationFrame(() => sheet.classList.add('open'));
+  sheet.scrollTop = 0;
+  if (location.hash !== '#seri') history.pushState({sheet:1}, '', '#seri');
+  const known = cache.get(id);
+  if (known) renderDetail(known);
+  else {
+    const s = lib[id];
+    $('#sheetBarTitle').textContent = s?.title || '';
+    $('#sheetBody').innerHTML = `<p class="none">Yükleniyor…</p>`;
+    try {
+      const d = await gql(ONE_Q, {id});
+      cache.set(id, d.Media);
+      if (!$('#sheet').hidden) renderDetail(d.Media);
+    } catch(e){
+      $('#sheetBody').innerHTML = `<div class="notice">${esc(errText(e))}</div>` + (s ? linksSection(s.title) : '');
+    }
+  }
+}
+function closeDetail(fromPop){
+  const sheet = $('#sheet');
+  sheet.classList.remove('open');
+  setTimeout(() => { sheet.hidden = true; }, 280);
+  current = null;
+  if (!fromPop && location.hash === '#seri') history.back();
+  if (!$('#view-lib').hidden) renderLib(); else showTab('find');
+}
+$('#backBtn').addEventListener('click', () => closeDetail(false));
+$('#sheetBody').addEventListener('click', e => {
+  const it = current && lib[current.id];
+  if (e.target.closest('.links a') && it && it.state !== 'done') setPending(current.id);
+});
+window.addEventListener('popstate', () => { if (!$('#sheet').hidden) closeDetail(true); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeDetail(false); });
+
+function linkRows(arr){
+  return `<div class="links">${arr.map(l => `<a href="${esc(l.url)}" target="_blank" rel="noopener">
+    <span class="ln">${esc(l.site)}<small>${esc(l.note || l.url.replace(/^https?:\/\/(www\.)?/,''))}</small></span>
+    ${l.lang ? `<span class="lang">${esc(l.lang)}</span>` : ''}<span class="arr" aria-hidden="true">↗</span></a>`).join('')}</div>`;
+}
+function linksSection(name, m){
+  const w = webLinks(name);
+  // Turkish and English first, the user's reading languages
+  const rank = l => ({Turkish:0, English:1}[l.language] ?? 2);
+  const official = (m?.externalLinks || []).filter(l => l.type === 'STREAMING').sort((a,b) => rank(a) - rank(b));
+  const other = (m?.externalLinks || []).filter(l => l.type !== 'STREAMING');
+  if (m?.siteUrl) other.push({site:'AniList', url:m.siteUrl, note:'Seri sayfası, puanlar ve yorumlar'});
+  const tr = {Japanese:'Japonca', Korean:'Korece', English:'İngilizce', Chinese:'Çince', French:'Fransızca', Spanish:'İspanyolca', German:'Almanca', Turkish:'Türkçe', Thai:'Tayca', Indonesian:'Endonezce', Italian:'İtalyanca', Portuguese:'Portekizce'};
+  return `
+    <section><h3>Resmi okuma yerleri</h3>
+      ${official.length ? linkRows(official.map(l => ({site:l.site, url:l.url, lang:tr[l.language] || l.language}))) : `<p class="none">Bu seri için kayıtlı resmi okuma sitesi yok. Aşağıdaki aramaları dene.</p>`}
+    </section>
+    <section><h3>Türkçe oku</h3>${linkRows(w.tr)}</section>
+    <section><h3>İngilizce oku</h3>${linkRows(w.en)}</section>
+    ${other.length ? `<section><details><summary>Diğer bağlantılar (${other.length})</summary>${linkRows(other.map(l => ({site:l.site, url:l.url, note:l.note, lang:tr[l.language] || l.language})))}</details></section>` : ''}`;
+}
+function renderDetail(m){
+  current = m;
+  const name = mainTitle(m);
+  $('#sheetBarTitle').textContent = name;
+  const alts = [m.title.romaji, m.title.native].filter(t => t && t !== name);
+  const desc = cleanDesc(m.description);
+  const facts = [
+    ['Tür', kindOf(m)],
+    ['Durum', STATUS[m.status] || '—'],
+    ['Bölüm', m.chapters ? `${m.chapters}${m.volumes ? ` · ${m.volumes} cilt` : ''}` : (m.status === 'RELEASING' ? 'Hâlâ çıkıyor' : '—')],
+    ['Son çıkan', m.status === 'FINISHED' && m.chapters ? `${m.chapters} (bitti)` : '…'],
+    ['Yıl', m.startDate?.year || '—'],
+    ['Puan', m.averageScore ? `${(m.averageScore/10).toFixed(1)} / 10` : '—'],
+  ];
+  const st = lib[m.id]?.state;
+  $('#sheetBody').innerHTML = `
+    <div class="hero">
+      <div class="cover"><img src="${esc(m.coverImage.extraLarge || m.coverImage.large)}" alt=""></div>
+      <div>
+        <h1 id="sheetTitle">${esc(name)}</h1>
+        ${alts.length ? `<p class="alt">${esc(alts.join(' · '))}</p>` : ''}
+        <dl class="facts">${facts.map(([k,v]) => `<dt>${k}</dt><dd${k === 'Son çıkan' ? ' id="lastCh"' : ''}>${esc(v)}</dd>`).join('')}</dl>
+      </div>
+    </div>
+    <div class="seg" id="seg">${LIB_STATES.map(([k,l]) => `<button data-s="${k}" aria-pressed="${st===k}">${l}</button>`).join('')}</div>
+    ${m.genres?.length ? `<div class="genres">${m.genres.map(x => `<span>${esc(GENRE[x] || x)}</span>`).join('')}</div>` : ''}
+    ${desc ? `<section><h3>Konusu <small style="text-transform:none;letter-spacing:0">(İngilizce)</small></h3><p class="desc clamp" id="desc">${esc(desc)}</p>
+      <div class="row"><button class="more" id="moreBtn">Devamını göster</button><a class="more" style="text-decoration:none" href="https://translate.google.com/?sl=en&tl=tr&op=translate&text=${encodeURIComponent(desc.slice(0,1800))}" target="_blank" rel="noopener">Türkçeye çevir ↗</a></div></section>` : ''}
+    ${linksSection(name, m)}`;
+  $('#seg').addEventListener('click', e => {
+    const b = e.target.closest('[data-s]'); if (!b) return;
+    const next = lib[m.id]?.state === b.dataset.s ? null : b.dataset.s;
+    setState(m, next);
+    $('#seg').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.s === next));
+  });
+  if ($('#lastCh').textContent === '…'){
+    latest(m.id, [m.title.english, m.title.romaji])
+      .then(s => { if (current === m) $('#lastCh').textContent = latestText(s) || 'bilinmiyor'; })
+      .catch(() => { if (current === m) $('#lastCh').textContent = 'bilinmiyor'; });
+  }
+  const more = $('#moreBtn');
+  if (more) more.addEventListener('click', () => { const d = $('#desc'); d.classList.toggle('clamp'); more.textContent = d.classList.contains('clamp') ? 'Devamını göster' : 'Kısalt'; });
+}
+
+// ---------- icon (drawn once, used for the home-screen shortcut) ----------
+(function makeIcon(){
+  const c = document.createElement('canvas'); c.width = c.height = 180;
+  const x = c.getContext('2d');
+  x.fillStyle = '#16181C'; x.fillRect(0,0,180,180);
+  x.fillStyle = 'rgba(255,255,255,.12)';
+  for (let i = 4; i < 180; i += 9) for (let j = 4; j < 180; j += 9) { x.beginPath(); x.arc(i,j,1.6,0,7); x.fill(); }
+  x.strokeStyle = '#F4F2ED'; x.lineWidth = 7;
+  x.strokeRect(28,28,124,124);
+  x.beginPath(); x.moveTo(28,96); x.lineTo(152,82); x.moveTo(98,28); x.lineTo(88,89); x.stroke();
+  x.fillStyle = '#6CC6F0'; x.fillRect(102,98,40,44);
+  const url = c.toDataURL('image/png');
+  $('#touchIcon').href = url; $('#favIcon').href = url;
+})();
+
+if (location.hash === '#seri') history.replaceState(null, '', location.pathname);
+updateCount();
+loadList('');
+</script>
+</body>
+</html>
